@@ -11,12 +11,21 @@
 #include <vector>
 #include <fcntl.h>
 #include <iostream>
+#include <fstream>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #define CERTPATH "./cert.pem"
 #define KEYPATH "./key.pem"
+using std::string;
+using std::endl;
+using std::vector;
+using std::ostream;
+using std::cout;
+
+#define LOWERCASE "abcdefghijklmnopqrstuvwxyz1234567890._"
+#define UPPERCASE "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890._"
 
 /*
   
@@ -83,6 +92,48 @@ class WebServer{
       
       WebServer(int p){
         port = p ;
+
+      }
+      int write_cast_device(vector<string> data){
+
+          string host = data[0];
+          string ip = data[1];
+
+          FILE *a = fopen(("./redundant_data/"+ip).c_str(),"w");
+          if(a == NULL){
+            return -1;
+          }
+          fwrite(host.c_str(),host.length(),1,a);
+          fclose(a);
+          return  0; 
+
+
+      }
+      std::vector<std::string> fetch_data_from_json(std::string json){
+
+          std::vector<std::string> result;
+          string dat = json.substr(json.find("dev_info\":")+10);
+          vector<string> elems = split(dat,",");
+          vector<string>new_elems ; 
+          for(auto const& th: elems){
+            string dot = "";
+            for(int i = 0 ;i <th.length();i++){
+              bool found = false;
+              for(int j = 0 ;j < strlen(LOWERCASE);j++){
+                if(th[i] == LOWERCASE[j] || th[i] == UPPERCASE[j]){
+                  found= true;
+                }
+              }
+              if(found == true){
+                dot+=th[i];
+              }
+     
+            }
+
+            new_elems.push_back(dot);
+
+          }
+          return new_elems;
 
       }
       std::string construct_https_result(std::string dat){
@@ -172,8 +223,48 @@ class WebServer{
 
                     }
                     if(data[0] == "POST"){
+                        if(data[1].substr(data[1].find("/")+1) == "add_device"){
+                          std::string post_data = "" ;
+                          for(auto const& param:dat){
+                            std::vector<std::string> param_args = split(param,":");
+                            if(param_args[0] == "Content-Length" || param_args[0] == "content-length"){
 
+                                int len = atoi((param_args[1].substr(param_args[1].find(" ")+1)).c_str());
+                                
+                                for(int i = 0 ;i < len;i++){
+                                    char dat[1];
+                                    SSL_read(ssl,dat,1);
+                                  
+                                    post_data+=dat[0];
+                                }
+                                break;
 
+                            }
+                           
+                          }
+                          std::cout<<"POST:"<<post_data<<std::endl;
+                          if(post_data.find("dev_info") == std::string::npos){
+                              char* err = "Invalid params";
+                              SSL_write(ssl,err,strlen(err));
+                          }
+                          else{
+                            
+                              std::vector<std::string> data = fetch_data_from_json(post_data);
+                              if(write_cast_device(data) == -1){
+                                  char* err = "Invalid params";
+                                  SSL_write(ssl,err,strlen(err));
+                              }
+                              else{
+                                  char* err = "OK";
+                                  SSL_write(ssl,err,strlen(err));
+                              }
+                              
+                              
+
+                          }
+                        }
+                        
+                        exit(1);
                       
                     }
 
@@ -227,12 +318,14 @@ class WebServer{
 
 
 int main(){
-  
+
+    
   WebServer *srv = new WebServer(443);
   srv->dispatch();
-  
 
 
 }
+
+
 
 

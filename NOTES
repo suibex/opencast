@@ -15,6 +15,7 @@ if a request for popup arrives it opens a link through xdg-open on Linux.
 if a copy/paste request popup arrives , it reads that stuff and writes the data into clipboard.
 
 
+
 Our Client is basically a Linux executable (so that it could be built on android and PC) - for copying data.
 For android casting , we will add a seperate option somewhere xd.
 
