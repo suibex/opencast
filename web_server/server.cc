@@ -80,7 +80,16 @@ std::string get_device_list(std::string ip){
     fclose(a);
     return devs;
 }   
+/*
 
+  Queue system:
+
+    POST /getQueue {'ip':127.0.0.1,'device':'Kurcina'} - gets a current URL that is being played.
+    POST /setQueue {'ip':'127.0.0.1','device':'kurcina','url':'https://github.com/nitrodegen'}
+
+
+
+*/
 class WebServer{
 
     public:
@@ -206,7 +215,6 @@ class WebServer{
                     }
                   }
 
-
                   //And finally , process the request here.
                     std::cout<<request<<std::endl;
 
@@ -223,6 +231,7 @@ class WebServer{
 
                     }
                     if(data[0] == "POST"){
+                      
                         if(data[1].substr(data[1].find("/")+1) == "add_device"){
                           std::string post_data = "" ;
                           for(auto const& param:dat){
@@ -258,13 +267,11 @@ class WebServer{
                                   char* err = "OK";
                                   SSL_write(ssl,err,strlen(err));
                               }
-                              
-                              
-
+                                                   
                           }
                         }
                         
-                        exit(1);
+
                       
                     }
 
@@ -276,9 +283,9 @@ class WebServer{
                 exit(1);
 
              }
+             
              close(clifd);
 
-        
         }
 
       }
