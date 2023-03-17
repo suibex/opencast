@@ -108,20 +108,26 @@ class WebServer{
           string host = data[0];
           string ip = data[1];
 
-          FILE *a = fopen(("./redundant_data/"+ip).c_str(),"w");
-          if(a == NULL){
-            return -1;
-          }
-          fwrite(host.c_str(),host.length(),1,a);
-          fclose(a);
-          return  0; 
+          if((access(("./redundant_data/"+ip).c_str(),F_OK)) == -1){
 
+            
+            FILE *a = fopen(("./redundant_data/"+ip).c_str(),"w");
+            if(a == NULL){
+              return -1;
+            }
+            fwrite(host.c_str(),host.length(),1,a);
+            fclose(a);
+
+            return  0; 
+          }
+
+          return -1;
 
       }
       std::vector<std::string> fetch_data_from_json(std::string json){
 
           std::vector<std::string> result;
-          string dat = json.substr(json.find("dev_info\":")+10);
+          string dat = json.substr(json.find("dev_info")+10);
           vector<string> elems = split(dat,",");
           vector<string>new_elems ; 
           for(auto const& th: elems){
@@ -151,9 +157,9 @@ class WebServer{
         req+="Date: Mon, 27 Jul 2022 12:28:53 GMT\r\n";
         req+="Server:opencast/1.0a\r\n";
         req+="Last-Modified: Wed, 22 Jul 2022 19:15:56 GMT\r\n";
-        req+="Content-Length: "+std::to_string(dat.length()+2)+"\r\n";
+        req+="Content-Length: "+std::to_string(dat.length())+"\r\n";
         req+="Content-Type: application/json\r\n";
-        req+="Connection: Closed\r\n\r\n\r\n";
+        req+="Connection: Closed\r\n\r\n";
         return req;
       }
 
@@ -233,6 +239,7 @@ class WebServer{
                     if(data[0] == "POST"){
                       
                         if(data[1].substr(data[1].find("/")+1) == "add_device"){
+                          cout<<"ADDING?"<<endl;
                           std::string post_data = "" ;
                           for(auto const& param:dat){
                             std::vector<std::string> param_args = split(param,":");
@@ -243,29 +250,47 @@ class WebServer{
                                 for(int i = 0 ;i < len;i++){
                                     char dat[1];
                                     SSL_read(ssl,dat,1);
-                                  
+
                                     post_data+=dat[0];
                                 }
+                                
                                 break;
 
                             }
                            
                           }
                           std::cout<<"POST:"<<post_data<<std::endl;
+                          string err = "";
+                          string errmsg= "";
                           if(post_data.find("dev_info") == std::string::npos){
-                              char* err = "Invalid params";
-                              SSL_write(ssl,err,strlen(err));
+                              errmsg="{\"result\":\"INVALID_PARAMS\"}";
+
+                              err = construct_https_result(errmsg)+errmsg;
+                              cout<<err.length()<<endl;
+
+
+                              SSL_write(ssl,err.c_str(),err.length());
                           }
                           else{
                             
                               std::vector<std::string> data = fetch_data_from_json(post_data);
                               if(write_cast_device(data) == -1){
-                                  char* err = "Invalid params";
-                                  SSL_write(ssl,err,strlen(err));
+                                  cout<<"ADDEDD!!"<<endl;  
+                                  errmsg = "{\"result\":\"DEVICE_ALREADY_ADDED\"}";
+                                  err =  construct_https_result(errmsg)+errmsg;
+                                  cout<<err<<endl;
+                                   cout<<err.length()<<endl;
+
+
+                                  SSL_write(ssl,err.c_str(),err.length());
                               }
                               else{
-                                  char* err = "OK";
-                                  SSL_write(ssl,err,strlen(err));
+                                  cout<<"DATA:"<<data[0]<<":"<<data[1]<<endl;
+                                  errmsg="{\"result\":\"OK\"}";
+                                  err = construct_https_result(errmsg)+errmsg;
+                                  cout<<err.length()<<endl;
+
+                                 SSL_write(ssl,err.c_str(),err.length());
                               }
                                                    
                           }
@@ -326,8 +351,14 @@ class WebServer{
 
 int main(){
 
-    
-  WebServer *srv = new WebServer(443);
+  char *prt_d = getenv("SERVER_PORT");
+  if(prt_d == NULL){
+    printf("\nSERVER_PORT not provided.\n");
+    exit(1);
+  }
+  int port = atoi(prt_d );
+  printf("\nrunning on port %d",port);
+  WebServer *srv = new WebServer(port);
   srv->dispatch();
 
 

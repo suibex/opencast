@@ -10,7 +10,9 @@ from threading import Thread
 from multiprocessing import Queue
 
 
-PORT = 448
+PORT = int(os.getenv("QUEUE_PORT"))
+print(PORT)
+
 
 """
     POST /getQueue 
@@ -51,8 +53,13 @@ class WebQueuer(object):
             req+=dat
             if(b"\r\n\r\n" in req):
                 break
+            
+
+        
+      
 
         req= req.decode()
+        depd = req
         req = req.split("\r\n")
         typed =req[0].split(" ")
         if(typed[0] != "POST"):
@@ -60,26 +67,64 @@ class WebQueuer(object):
         else:   
             jsoned = b""
             method= typed[1].replace("/","")
-            if(method == "setQueue"):
 
-                #{dev_info:[],url:[]}
+            
+           # print(method)
+
+            if(method == "setQueue"):
+                
+
                 for param in req:
                     if("Content-Length" in param or "content-length" in param):
 
+                        
+                        dod = depd.split("\r\n\r\n")
                         length = int(param.split(":")[1].replace(" ",""))
+                        if(len(dod) > 1) :
+                            length-=len(dod[1])
+                            jsoned+=dod[1].encode()
+
+                             
                         for i in range(length):
                             jsoned+=conn.recv(1)
+
                         break
 
-                
                 jsoned = json.loads(jsoned)
-                print(jsoned)
-                self.queues.append([jsoned['dev_info'],jsoned['url']])
-                conn.send(self.return_err_dwd("DEVICE_ADDED"))
+ #               print(jsoned)
+                print("ADDING DEVICE:",jsoned)
+
+
+                print("REQ:","QUEUE:",self.queues)
+                if(jsoned['url'] == "none"):
+                    for i in range(len(self.queues)):
+                        dev = self.queues[i]
+                        if(dev[0][0] == jsoned['dev_info'][0]):
+                            print("deleting device :",dev)
+
+                            del self.queues[i]
+                            break
+
+                else:
+                    if(len(self.queues) > 1):
+                        for i in range(len(self.queues)):
+                            q = self.queues[i]
+                            if(q[0][0] == jsoned['dev_info'][0]):
+                                q[1] = jsoned['url']
+                         
+                    else:
+                        devd = [jsoned['dev_info'],jsoned['url']]
+                        if(devd not in self.queues):
+                            self.queues.append([jsoned['dev_info'],jsoned['url']])
+                    #conn.send(self.return_err_dwd("DEVICE_ADDED"))
+                
+             
+
 
 
             if(method == "getQueue"):
 
+
                 for param in req:
                     if("Content-Length" in param or "content-length" in param):
 
@@ -87,9 +132,16 @@ class WebQueuer(object):
                         for i in range(length):
                             jsoned+=conn.recv(1)
                         break
-
                 
+      
+                jsoned = jsoned.replace(b"\r\n",b"")
+                jsoned = jsoned.replace(b"\r",b"")
+                jsoned = jsoned.replace(b"\n",b"")
+                jsoned = jsoned.replace(b"'",b"\"")
+               
                 jsoned = json.loads(jsoned)
+               # print("DD:",jsoned)
+
                 try:
                     
                     dev_info = jsoned['dev_info']
@@ -97,17 +149,29 @@ class WebQueuer(object):
                     dev_ip = dev_info[1]
                     found_dev= False
                     url = None
+                    #print(dev_info)
+
                     for dev in self.queues:
-                        if(dev[0][0] == dev_name and dev[0][1] == dev_ip):
+                        print("DEV:",dev,dev_ip,)
+                        
+                        if(str(dev[0][0]) == str(dev_name) and str(dev[0][1]) == str(dev_ip)):
                             found_dev = True
+                            print(" I MATCH !!! ")
                             url = dev[1]
-                            break
+                            break   
+
+                    
+                    print("FOUND:",found_dev,"URL:",url)
+                    
                     if(found_dev == False and url is None):
                         conn.write(self.return_err_dwd("DEVICE_NOT_ADDED"))
 
                     else:
-
-                        conn.write(url.encode())
+                        if(url == "none"):
+                            conn.write(self.return_err_dwd("none"))
+                        else:
+                            conn.write(self.return_err_dwd(url))
+                            
                     
                 except Exception as e:
                     print(e)
@@ -116,11 +180,13 @@ class WebQueuer(object):
 
 
 
+        try:
+            conn.shutdown(SHUT_RDWR)
+            conn.close()
+            exit(1)
 
-        conn.shutdown(SHUT_RDWR)
-        conn.close()
-        exit(1)
-
+        except Exception as e:
+            exit(1)
 
     def prep_socket(self):
         sock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP)
