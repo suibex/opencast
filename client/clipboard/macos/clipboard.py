@@ -42,7 +42,3 @@ class Clipboard:
         dat = dat.encode('utf-8')
         return self.shared_lib.copy_string_to_clipboard(dat,1)
 
-clip = Clipboard(1,"./clip.so")
-clip.set_string("hello")
-
-

@@ -62,6 +62,8 @@ class ClipboardControl{
     char* read_clipboard(void){
         NSString * o = [board stringForType:NSPasteboardTypeString];
         const char *out = [o UTF8String];
+
+
         return (char*)out;
     }
 

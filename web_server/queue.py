@@ -87,7 +87,7 @@ class WebQueuer(object):
             
 
         
-      
+        print("** received request:", req)
 
         req= req.decode()
         depd = req
