@@ -47,6 +47,10 @@ print(PORT)
     #in queues you will have stored.
     [dev_info(packed),current_playin_url]
 
+    #in keyboard queues you will have stored
+    element will contain: [dev_info,clipboard]
+
+
 """
 
 
@@ -55,6 +59,7 @@ class WebQueuer(object):
     def __init__(self) -> None:
         
         self.queues  = [] 
+        self.clipboard_queue=[]
 
     def return_err_dwd(self,msg):   
 
@@ -94,8 +99,80 @@ class WebQueuer(object):
             jsoned = b""
             method= typed[1].replace("/","")
 
-            
-           # print(method)
+
+            if(method == "setClipboard"):
+                
+                for param in req:
+                    if("Content-Length" in param or "content-length" in param):
+                        dod = depd.split("\r\n\r\n")
+                        length = int(param.split(":")[1].replace(" ",""))
+                        if(len(dod) > 1) :
+                            length-=len(dod[1])
+                            jsoned+=dod[1].encode()                                
+                        for i in range(length):
+                            jsoned+=conn.recv(1)
+
+                        break
+                        
+                
+                try:
+                    jsoned = json.loads(jsoned)
+
+                    dev_info = jsoned['dev_info']
+                    clipbrd = jsoned['clipboard']
+                    found_device = False
+        
+                    for i in range(len(self.clipboard_queue)):
+
+                            queue = self.clipboard_queue[i]
+                            dev = queue[0]
+                            
+                            if(dev[0] == dev_info[0] and dev[1] == dev_info[1]):
+                                
+                                found_device = True
+                                self.clipboard_queue[i][1]  =  clipbrd
+
+                    if(not found_device):
+                        self.clipboard_queue.append([dev_info,clipbrd])
+                    print("Clipboard set ",dev_info,clipbrd)
+                    conn.send(self.return_err_dwd("OK"))
+                except Exception as e:
+                    conn.send(self.return_err_dwd("server returned:"+str(e)))
+              
+            if(method == "getClipboard"):
+                for param in req:
+                    if("Content-Length" in param or "content-length" in param):
+                        dod = depd.split("\r\n\r\n")
+                        length = int(param.split(":")[1].replace(" ",""))
+                        if(len(dod) > 1) :
+                            length-=len(dod[1])
+                            jsoned+=dod[1].encode()                                
+                        for i in range(length):
+                            jsoned+=conn.recv(1)
+
+                        break
+                        
+                
+                try:
+                    jsoned = json.loads(jsoned)
+                    dev_info = jsoned['dev_info']
+                    found_device = False
+                    clipboard_data_found = None
+
+                    for i in range(len(self.clipboard_queue)):
+                        dev_c = self.clipboard_queue[i]
+                        if(dev_c[0][0] == dev_info[0] and dev_c[0][1] == dev_info[1]):
+                            found_device=True
+                            clipboard_data_found = dev_c[1]
+                    if(found_device and clipboard_data_found is not None):
+                        conn.send(self.return_err_dwd(clipboard_data_found))
+                    else:
+                        conn.send(self.return_err_dwd("no clipboard data found"))
+
+                    
+
+                except Exception as e:
+                    conn.send(self.return_err_dwd("server returned:"+str(e)))
 
             if(method == "setQueue"):
                 
@@ -117,11 +194,6 @@ class WebQueuer(object):
                         break
 
                 jsoned = json.loads(jsoned)
- #               print(jsoned)
-                print("ADDING DEVICE:",jsoned)
-
-
-                print("REQ:","QUEUE:",self.queues)
                 if(jsoned['url'] == "none"):
                     for i in range(len(self.queues)):
                         dev = self.queues[i]
