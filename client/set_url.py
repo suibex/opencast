@@ -2,8 +2,9 @@ import os,io,sys
 import httpx
 import asyncio
 import requests
-sys.path.insert(1,'/Users/gavrilo/Desktop/opencast/opencast/caster/')
+sys.path.insert(1,'/Users/gavrilo/Desktop/opencast/opencast/client/lib/')
 from caster import * 
+
 from multiprocessing import Process
 QUEUE_URL = "https://127.0.0.1:53/"
 

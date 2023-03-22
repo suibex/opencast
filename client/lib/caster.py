@@ -159,9 +159,9 @@ class Communicator:
         req = requests.get("https://ifconfig.co/json").json()
         ip = req['ip']
 
-
         sockd = create_connection((self.server_ip,self.port))
         print(sockd.fileno())
+
 
         ssock = self.cont.wrap_socket(sock=sockd,server_hostname=self.server_ip)
         print(ssock.fileno())
@@ -204,6 +204,7 @@ class Communicator:
 
                 if(dat == "INVALID_PARAMS" or dat == "DEVICE_ALREADY_ADDED"):
                     return -1
+                
                 else:
 
                     return 1

@@ -1,7 +1,7 @@
 import os,io,sys
 import httpx
 import asyncio
-sys.path.insert(1,'./clipboard/macos/')
+sys.path.insert(1,'./lib/clipboard/macos/')
 from clipboard import * 
 from multiprocessing import Process
 QUEUE_URL = "https://127.0.0.1:53/"
